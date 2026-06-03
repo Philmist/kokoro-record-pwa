@@ -1,0 +1,77 @@
+/* グローバル：テーマ変数・リセット・ベース。ライト/ダークは prefers-color-scheme で自動切替。 */
+:root {
+  color-scheme: light dark;
+
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef1f4;
+  --text: #1c2430;
+  --text-muted: #6b7785;
+  --border: #d8dee6;
+  --primary: #3b6cf0;
+  --primary-text: #ffffff;
+  --danger: #d24545;
+  --danger-text: #ffffff;
+  --chip-on-bg: #3b6cf0;
+  --chip-on-text: #ffffff;
+  --accent-printed: #2e9e5b;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --radius: 10px;
+
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Hiragino Kaku Gothic ProN',
+    'Noto Sans JP', Meiryo, sans-serif;
+  line-height: 1.6;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15191e;
+    --surface: #1e242b;
+    --surface-2: #262d35;
+    --text: #e6eaef;
+    --text-muted: #9aa6b2;
+    --border: #333c46;
+    --primary: #5b86f5;
+    --primary-text: #ffffff;
+    --danger: #e06464;
+    --chip-on-bg: #5b86f5;
+    --accent-printed: #4cc079;
+    --shadow: none;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#app {
+  min-height: 100vh;
+}
+
+input,
+textarea,
+button {
+  font-family: inherit;
+  font-size: 1rem;
+  color: inherit;
+}
+
+textarea {
+  resize: vertical;
+}
