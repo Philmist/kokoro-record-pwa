@@ -1,0 +1,7 @@
+# Service Worker は常に再検証し、古い SW が貼り付くのを防ぐ。
+/sw.js
+  Cache-Control: no-cache
+
+# Web App Manifest も更新が届くよう再検証させる。
+/manifest.webmanifest
+  Cache-Control: no-cache
