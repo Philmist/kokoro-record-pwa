@@ -372,6 +372,11 @@
 }
 
 @media print {
+  body,
+  #app {
+    min-height: unset;
+  }
+
   body {
     background: #fff;
     color: #000;
