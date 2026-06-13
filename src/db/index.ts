@@ -5,6 +5,8 @@ import type { DBSchema, IDBPDatabase } from 'idb';
 import type { Entry, EmotionPreset, EntryDraft } from '../types';
 import { DEFAULT_EMOTION_LABELS } from '../data/defaultPresets';
 import { uuid } from '../utils/id';
+import { buildEnvelope } from './backup';
+import type { BackupEnvelope } from './backup';
 
 const DB_NAME = 'kokoro-log';
 const DB_VERSION = 1;
@@ -127,4 +129,75 @@ export async function renamePreset(id: string, label: string): Promise<void> {
 export async function deletePreset(id: string): Promise<void> {
   const db = await getDB();
   await db.delete('emotionPresets', id);
+}
+
+// ---- バックアップ（エクスポート/インポート） ----
+// 注意: idb のトランザクションは、途中で非 IDB の Promise を await すると
+// 自動コミット/クローズされる。各関数は単一トランザクション内で IDB 操作のみを
+// await し、最後に tx.done を待つ。確定仕様はメモリ backup-export-import-design.md。
+
+/** 現在の全データをバックアップ封筒として書き出す（判断4,5）。 */
+export async function exportSnapshot(): Promise<BackupEnvelope> {
+  const db = await getDB();
+  const entries = await db.getAll('entries');
+  const presets = await db.getAll('emotionPresets');
+  return buildEnvelope(entries, presets);
+}
+
+/**
+ * 完全置換（判断3,14）。両ストアを clear → put×N を単一トランザクションで実行。
+ * 途中で例外（QuotaExceededError 等）→ トランザクション abort で全ロールバック。
+ * 例外は呼び出し側へ伝播（err.name を保つ）。置換 Undo の全復元にも再利用する。
+ */
+export async function replaceAll(entries: Entry[], presets: EmotionPreset[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(['entries', 'emotionPresets'], 'readwrite');
+  const entryStore = tx.objectStore('entries');
+  const presetStore = tx.objectStore('emotionPresets');
+  await entryStore.clear();
+  await presetStore.clear();
+  for (const e of entries) entryStore.put(e);
+  for (const p of presets) presetStore.put(p);
+  await tx.done;
+}
+
+/** マージ結果の内訳（判断16）。 */
+export interface MergeResult {
+  /** 端末に無く新規追加した件数。 */
+  added: number;
+  /** ファイル側 updatedAt が新しく上書きした件数。 */
+  overwritten: number;
+  /** 端末側が新しいか同じでファイル側を捨てた件数。 */
+  keptBack: number;
+}
+
+/**
+ * マージ（判断2,3,16）。entries のみ id をキーに和集合、衝突は updatedAt 新優先。
+ * emotionPresets は触らない。単一トランザクションで全成功/全失敗（判断14）。
+ */
+export async function mergeEntries(incoming: Entry[]): Promise<MergeResult> {
+  const db = await getDB();
+  const tx = db.transaction('entries', 'readwrite');
+  const store = tx.objectStore('entries');
+  const existing = await store.getAll();
+  const byId = new Map<string, Entry>();
+  for (const e of existing) byId.set(e.id, e);
+
+  let added = 0;
+  let overwritten = 0;
+  let keptBack = 0;
+  for (const inc of incoming) {
+    const cur = byId.get(inc.id);
+    if (!cur) {
+      store.put(inc);
+      added++;
+    } else if (inc.updatedAt > cur.updatedAt) {
+      store.put(inc);
+      overwritten++;
+    } else {
+      keptBack++;
+    }
+  }
+  await tx.done;
+  return { added, overwritten, keptBack };
 }

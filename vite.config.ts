@@ -1,9 +1,14 @@
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vite'
 import preact from '@preact/preset-vite'
+import pkg from './package.json' with { type: 'json' }
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // バックアップ封筒の appVersion（デバッグ情報）用。package.json の version を埋め込む。
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [preact(), VitePWA({
     registerType: 'prompt',
     injectRegister: false,
