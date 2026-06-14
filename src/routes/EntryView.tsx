@@ -16,6 +16,7 @@ import { uuid } from '../utils/id';
 import type { Entry, EmotionPreset } from '../types';
 import { nowLocalInput, formatEpoch } from '../utils/datetime';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { EmotionWheelPicker } from '../ui/EmotionWheelPicker';
 import { showToast } from '../ui/toast';
 import { PrintSheet } from './PrintSheet';
 
@@ -70,6 +71,7 @@ export function EntryView({ id }: EntryViewProps) {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [presets, setPresets] = useState<EmotionPreset[]>([]);
   const [freeEmotion, setFreeEmotion] = useState('');
+  const [wheelOpen, setWheelOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
   // 任意項目の折り畳み開閉。新規は閉じ、編集で値があれば開く。以後はユーザー操作に追従。
@@ -139,10 +141,15 @@ export function EntryView({ id }: EntryViewProps) {
     );
   }
 
+  // 重複を避けて感情語を追加する（自由入力・感情の輪ピッカー共通）。
+  function addEmotion(label: string) {
+    setForm((f) => (f.emotions.includes(label) ? f : { ...f, emotions: [...f.emotions, label] }));
+  }
+
   function addFreeEmotion() {
     const label = freeEmotion.trim();
     if (!label) return;
-    setForm((f) => (f.emotions.includes(label) ? f : { ...f, emotions: [...f.emotions, label] }));
+    addEmotion(label);
     setFreeEmotion('');
   }
 
@@ -327,6 +334,12 @@ export function EntryView({ id }: EntryViewProps) {
                 </button>
               ))}
             </div>
+            {/* プリセットとは別に、プルチックの感情の輪から選ぶ手段。 */}
+            <div class="wheel-launch">
+              <button type="button" class="btn btn-sm" onClick={() => setWheelOpen(true)}>
+                感情の輪から選ぶ
+              </button>
+            </div>
             {/* プリセットにない自由入力ぶんは取り消せるチップで表示。 */}
             {form.emotions.filter((e) => !presets.some((p) => p.label === e)).length > 0 && (
               <div class="chips">
@@ -361,6 +374,14 @@ export function EntryView({ id }: EntryViewProps) {
                 追加
               </button>
             </div>
+            <EmotionWheelPicker
+              open={wheelOpen}
+              onConfirm={(label) => {
+                addEmotion(label);
+                setWheelOpen(false);
+              }}
+              onCancel={() => setWheelOpen(false)}
+            />
           </div>
 
           <label class="field">
