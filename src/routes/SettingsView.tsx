@@ -16,21 +16,9 @@ import { parseAndValidate, normalizeEntries, normalizePresets, backupFileName } 
 import type { BackupEnvelope, ImportMode } from '../db/backup';
 import type { EmotionPreset, Entry } from '../types';
 import { showToast } from '../ui/toast';
+import { shareOrDownload } from '../utils/download';
 import { ImportDialog } from '../ui/ImportDialog';
 import type { ImportSummary } from '../ui/ImportDialog';
-
-/** Blob を `<a download>` で保存する（share 不可時のフォールバック、判断7）。 */
-function downloadBlob(blob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  // 直後に revoke するとダウンロードが取りこぼされる端末があるため少し遅らせる。
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 export function SettingsView() {
   const [presets, setPresets] = useState<EmotionPreset[]>([]);
@@ -83,19 +71,8 @@ export function SettingsView() {
     const fileName = backupFileName();
     const blob = new Blob([JSON.stringify(env)], { type: 'application/json' });
     const file = new File([blob], fileName, { type: 'application/json' });
-
-    // 二段構え：共有シート（iPhone PWA 本命）→ 不可なら download。
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file] });
-        return; // 成功（または共有先に渡せた）。
-      } catch (err) {
-        // キャンセル（AbortError）はエラー扱いしない（判断7）。
-        if (err instanceof Error && err.name === 'AbortError') return;
-        // それ以外（共有不可・権限失効など）は download にフォールバック。
-      }
-    }
-    downloadBlob(blob, fileName);
+    // 共有シート（iPhone PWA 本命）→ 不可なら download の二段構え。
+    await shareOrDownload(blob, file, fileName);
   }
 
   // ---- インポート：ファイル選択 → 封筒検証 → 確認ダイアログ（判断9,11） ----

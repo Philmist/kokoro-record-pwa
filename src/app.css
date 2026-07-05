@@ -143,6 +143,45 @@
   color: var(--text-muted);
 }
 
+/* ---- 選択モード ---- */
+.entry-row-select {
+  cursor: pointer;
+}
+.entry-row-check {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.entry-row.is-selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+/* 下部の固定アクションバー。.app の最大幅に合わせて中央に収める。 */
+.selection-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 8px rgb(0 0 0 / 0.06);
+}
+.selection-count {
+  flex: 1;
+  font-weight: 500;
+}
+
 /* ---- チップ ---- */
 .chips {
   display: flex;
