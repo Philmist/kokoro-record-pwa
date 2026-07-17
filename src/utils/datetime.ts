@@ -20,14 +20,9 @@ const dateTimeFormat = new Intl.DateTimeFormat('ja-JP', {
 });
 
 function formatDate(d: Date): string {
-  // ja-JP の weekday は「水」のように出るので () で囲む整形を行う。
-  const parts = dateTimeFormat.formatToParts(d);
-  let out = '';
-  for (const p of parts) {
-    if (p.type === 'weekday') out += `(${p.value})`;
-    else out += p.value;
-  }
-  return out;
+  // ja-JP の Intl.DateTimeFormat は weekday の前後に literal として
+  // 既に "(" ")" を含めて返すため、ここで重ねて括弧を付けない。
+  return dateTimeFormat.format(d);
 }
 
 /** 'YYYY-MM-DDTHH:mm' を「2026年6月3日(水) 14:30」のように整形する。 */
