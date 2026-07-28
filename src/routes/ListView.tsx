@@ -8,6 +8,7 @@ import { formatDateTime } from '../utils/datetime';
 import { entriesToYaml, yamlFileName } from '../db/yamlExport';
 import { shareOrDownload } from '../utils/download';
 import { showToast } from '../ui/toast';
+import { useBackGuard } from '../ui/history';
 
 /** 1行分の中身（日時・状況・感情チップ）。通常モードと選択モードで共通。 */
 function EntryRowBody({ entry }: { entry: Entry }) {
@@ -73,6 +74,9 @@ export function ListView() {
     setSelectMode(false);
     setSelected(new Set());
   }
+
+  // Android の戻るボタンで選択モードを抜ける（画面ごと離脱させない）。
+  useBackGuard(selectMode, exitSelect);
 
   async function handleExportYaml() {
     if (!entries || selected.size === 0) return;

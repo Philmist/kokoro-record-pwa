@@ -1,6 +1,7 @@
 // 設定画面（ハブ）。感情プリセットの編集と、データのバックアップ（エクスポート/インポート）。
 // バックアップの確定仕様はメモリ backup-export-import-design.md（判断1〜19）を参照。
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { useLocation } from 'preact-iso';
 import {
   getPresets,
   addPreset,
@@ -19,8 +20,10 @@ import { showToast } from '../ui/toast';
 import { shareOrDownload } from '../utils/download';
 import { ImportDialog } from '../ui/ImportDialog';
 import type { ImportSummary } from '../ui/ImportDialog';
+import { useBackGuard, returnToList } from '../ui/history';
 
 export function SettingsView() {
+  const { route } = useLocation();
   const [presets, setPresets] = useState<EmotionPreset[]>([]);
   const [newLabel, setNewLabel] = useState('');
 
@@ -86,6 +89,14 @@ export function SettingsView() {
     pendingEnvelope.current = null;
     resetFileInput();
   }
+
+  // Android の戻るボタンでダイアログを閉じる（画面ごと離脱させない）。
+  // 取り込み中は false を返して踏みとどまる（背景タップ・キャンセルの無効化と揃える）。
+  useBackGuard(importOpen, () => {
+    if (importBusy) return false;
+    closeImport();
+  });
+  useBackGuard(resultLines !== null, () => setResultLines(null));
 
   async function handleFileChange(e: Event) {
     const input = e.target as HTMLInputElement;
@@ -210,9 +221,10 @@ export function SettingsView() {
   return (
     <div class="page">
       <header class="app-header">
-        <a class="btn" href="/">
+        {/* 一覧へ「戻る」導線。push だと往復のたびに履歴が増えるので履歴を巻き戻す。 */}
+        <button type="button" class="btn" onClick={() => void returnToList(route)}>
           ‹ 一覧
-        </a>
+        </button>
         <h1 class="app-title">設定</h1>
         <span class="header-spacer" />
       </header>
