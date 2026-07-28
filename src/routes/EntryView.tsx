@@ -18,7 +18,11 @@ import { nowLocalInput, formatEpoch } from '../utils/datetime';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { EmotionWheelPicker } from '../ui/EmotionWheelPicker';
 import { showToast } from '../ui/toast';
+import { useBackGuard, returnToList } from '../ui/history';
 import { PrintSheet } from './PrintSheet';
+
+/** 未保存の変更を捨てて離脱するときの確認文言（ボタン経由・戻るボタン経由で共通）。 */
+const LEAVE_MESSAGE = '保存していない変更があります。破棄して移動しますか？';
 
 interface EntryViewProps {
   /** 編集対象 ID。新規時は undefined。 */
@@ -80,6 +84,12 @@ export function EntryView({ id }: EntryViewProps) {
   // dirty 判定用の初期スナップショット。初回レンダーの form と同一インスタンスから取る。
   const initialSnapshot = useRef<string>(JSON.stringify(form));
   const dirty = JSON.stringify(form) !== initialSnapshot.current;
+  // 一度でも編集したら離脱ガードを張り続ける。dirty の出入りに追従させると
+  // 入力のたびに履歴を出し入れすることになるため。
+  const [everDirty, setEverDirty] = useState(false);
+  useEffect(() => {
+    if (dirty) setEverDirty(true);
+  }, [dirty]);
 
   // 初期ロード（プリセット＋編集対象）。
   useEffect(() => {
@@ -153,11 +163,28 @@ export function EntryView({ id }: EntryViewProps) {
     setFreeEmotion('');
   }
 
-  // 離脱ガード付きナビゲーション。
-  function navigateGuarded(to: string) {
-    if (dirty && !window.confirm('保存していない変更があります。破棄して移動しますか？')) return;
-    route(to);
+  // 一覧へ戻る。ガードを片付け、潜るときに積んだ push を巻き戻す。
+  // push で移動すると往復のたびに履歴が増え、戻るボタンが古い画面を掘り返してしまう。
+  function leaveToList() {
+    return returnToList(route);
   }
+
+  // 離脱ガード付きで一覧へ戻る（アプリ内のボタン経由。戻るボタンは下の useBackGuard 側）。
+  function navigateGuarded() {
+    if (dirty && !window.confirm(LEAVE_MESSAGE)) return;
+    void leaveToList();
+  }
+
+  // Android の戻るボタンでモーダルを閉じる（画面ごと離脱させない）。
+  useBackGuard(wheelOpen, () => setWheelOpen(false));
+  useBackGuard(confirmDelete, () => setConfirmDelete(false));
+
+  // 未保存の変更があるときの離脱ガード。beforeunload は popstate では発火しないため、
+  // 戻るボタン/スワイプバックはここで確認する。
+  useBackGuard(everDirty, () => {
+    if (dirty && !window.confirm(LEAVE_MESSAGE)) return false; // 踏みとどまる
+    history.back(); // ダミーは消費済み。もう1つ戻って実際に前の画面へ。
+  });
 
   const situationValid = form.situation.trim().length > 0;
 
@@ -182,7 +209,7 @@ export function EntryView({ id }: EntryViewProps) {
     }
     initialSnapshot.current = JSON.stringify(form); // dirty 解除
     showToast('保存しました');
-    route('/');
+    await leaveToList();
   }
 
   function handleDelete() {
@@ -198,7 +225,7 @@ export function EntryView({ id }: EntryViewProps) {
           },
         },
       });
-      route('/');
+      void leaveToList();
     });
   }
 
@@ -231,7 +258,7 @@ export function EntryView({ id }: EntryViewProps) {
   return (
     <div class="page">
       <header class="app-header">
-        <button type="button" class="btn" onClick={() => navigateGuarded('/')}>
+        <button type="button" class="btn" onClick={navigateGuarded}>
           ‹ 一覧
         </button>
         <h1 class="app-title">{isNew ? '新しい記録' : '記録'}</h1>
@@ -399,7 +426,7 @@ export function EntryView({ id }: EntryViewProps) {
           <button type="submit" class="btn btn-primary" disabled={!situationValid}>
             保存
           </button>
-          <button type="button" class="btn" onClick={() => navigateGuarded('/')}>
+          <button type="button" class="btn" onClick={navigateGuarded}>
             キャンセル
           </button>
         </div>

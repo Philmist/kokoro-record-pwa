@@ -3,6 +3,7 @@ import { ListView } from './routes/ListView';
 import { EntryView } from './routes/EntryView';
 import { SettingsView } from './routes/SettingsView';
 import { ToastHost } from './ui/ToastHost';
+import { recordNavigation } from './ui/history';
 import PWABadge from './PWABadge.tsx';
 import './app.css';
 
@@ -21,7 +22,8 @@ export function App() {
   return (
     <LocationProvider>
       <main class="app">
-        <Router>
+        {/* 遷移のたびに履歴エントリへ深さを刻む（「一覧へ戻る」で巻き戻す量の判断に使う）。 */}
+        <Router onRouteChange={recordNavigation}>
           <Route path="/" component={ListView} />
           <Route path="/entry/new" component={EntryView} />
           <Route path="/entry/:id" component={EntryView} />
